@@ -20,7 +20,8 @@ public class DosingCalculatorTest {
 
     @Test
     public void returnsCorrectDosesForNeonate() {
-        patient.setBirthDate(LocalDate.now().minusMonths(1));
+       //minusMonth(1) failed after cloning  it from github, so made it minusDays(1)
+        patient.setBirthDate(LocalDate.now().minusDays(1));
         String singleDose = dosingCalculator.getRecommendedSingleDose(patient, "Tylenol Oral Suspension");
         assertEquals("0", singleDose);
     }
