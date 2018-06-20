@@ -2,8 +2,7 @@ package erserver.modules.dependencies;
 
 
 import com.google.gson.Gson;
-
-import static spark.Spark.*;
+import spark.Spark;
 
 public class EREndpoints {
 
@@ -16,47 +15,47 @@ public class EREndpoints {
    public static void initializeEndpoints() {
       Gson gson = new Gson();
 
-      get("/inboundPatients", (request, response) -> {
+      Spark.get("/inboundPatients", (request, response) -> {
          System.out.println("Recieved request for inbound patients from client.");
          return mainController.getInboundPatientController().currentInboundPatients();
       }, gson::toJson);
 
-      get("/shiftStaff", (request, response) -> {
+      Spark.get("/shiftStaff", (request, response) -> {
          System.out.println("Recieved request for all shift staff from client.");
          return mainController.getStaffAssignmentManager().getShiftStaff();
       }, gson::toJson);
 
-      get("/availableStaff", (request, response) -> {
+      Spark.get("/availableStaff", (request, response) -> {
          System.out.println("Recieved request for available staff from client.");
          return mainController.getStaffAssignmentManager().getAvailableStaff();
       }, gson::toJson);
 
-      get("/physiciansOnDuty", (request, response) -> {
+      Spark.get("/physiciansOnDuty", (request, response) -> {
          System.out.println("Recieved request for physicians on duty from client.");
          return mainController.getStaffAssignmentManager().getPhysiciansOnDuty();
       }, gson::toJson);
 
-      get("/beds", (request, response) -> {
+      Spark.get("/beds", (request, response) -> {
          System.out.println("Recieved request for all beds from client.");
          return mainController.getStaffAssignmentManager().getBeds();
       }, gson::toJson);
 
-      get("/availableBeds", (request, response) -> {
+      Spark.get("/availableBeds", (request, response) -> {
          System.out.println("Recieved request for available beds from client.");
          return mainController.getStaffAssignmentManager().getAvailableBeds();
       }, gson::toJson);
 
-      post("/assignPatientToBed", (request, response) -> {
+      Spark.post("/assignPatientToBed", (request, response) -> {
          int transportId = Integer.parseInt(request.queryParams("transportId"));
          int bedId = Integer.parseInt(request.queryParams("bedId"));
          System.out.println("Client request to assign patient " + transportId + " to bed " + bedId);
          AssignPatientToBedCommand command = new AssignPatientToBedCommand(mainController.getStaffAssignmentManager(),
-            mainController.getInboundPatientController());
+                                                                           mainController.getInboundPatientController());
          command.assignPatientToBed(transportId, bedId);
          return "OK";
       });
 
-      post("/assignStaffToBed", (request, response) -> {
+      Spark.post("/assignStaffToBed", (request, response) -> {
          int bedId = Integer.parseInt(request.queryParams("bedId"));
          int[] staffIds = gson.fromJson(request.body(), int[].class);
          System.out.println("Client request to assign staff to bed " + bedId);
@@ -64,7 +63,6 @@ public class EREndpoints {
          command.assignStaffToBed(staffIds, bedId);
          return "OK";
       });
-
 
    }
 

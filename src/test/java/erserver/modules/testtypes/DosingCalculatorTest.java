@@ -5,7 +5,7 @@ import org.junit.Test;
 
 import java.time.LocalDate;
 
-import static org.junit.Assert.*;
+import static org.junit.Assert.assertEquals;
 
 public class DosingCalculatorTest {
 
@@ -20,8 +20,8 @@ public class DosingCalculatorTest {
 
     @Test
     public void returnsCorrectDosesForNeonate() {
-       //minusMonth(1) failed after cloning  it from github, so made it minusDays(1)
-        patient.setBirthDate(LocalDate.now().minusDays(1));
+       //minusMonth(1) failed after cloning  it from github, so made it minusDays(27)
+        patient.setBirthDate(LocalDate.now().minusDays(27));
         String singleDose = dosingCalculator.getRecommendedSingleDose(patient, "Tylenol Oral Suspension");
         assertEquals("0", singleDose);
     }

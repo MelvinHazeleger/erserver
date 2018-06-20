@@ -25,11 +25,9 @@ public enum ChildClassification {
       }
       if ((yearsOld >= 12) && (yearsOld < 16)) {
          return ADOLESCENT;
-      }
-      if ((yearsOld >= 16)) {
+      } else {
          return UNDEFINED;
       }
-      return UNDEFINED;
    }
 
 }
