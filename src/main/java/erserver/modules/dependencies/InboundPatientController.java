@@ -12,7 +12,7 @@ import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 
-public class InboundPatientController {
+public class InboundPatientController implements InboundPatientSource {
 
    private EmergencyResponseService transportService;
 
@@ -20,6 +20,7 @@ public class InboundPatientController {
       this.transportService = transportService;
    }
 
+   @Override
    public List<Patient> currentInboundPatients() {
       String xmlForInbound = transportService.fetchInboundPatients();
       System.out.println("Recieved XML from transport service: \n" + xmlForInbound);
@@ -53,6 +54,7 @@ public class InboundPatientController {
       return patients;
    }
 
+   @Override
    public void informOfPatientArrival(int transportId) {
       transportService.informOfArrival(transportId);
    }
