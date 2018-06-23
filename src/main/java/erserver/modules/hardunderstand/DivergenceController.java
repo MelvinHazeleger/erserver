@@ -13,6 +13,8 @@ import erserver.modules.dependencies.vendorpagersystem.PagerTransport;
 import erserver.modules.testtypes.Patient;
 
 import java.util.List;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public class DivergenceController {
 
@@ -63,7 +65,6 @@ public class DivergenceController {
       boolean yellowIncremented = false;
       boolean greenIncremented = false;
 
-      List<Patient> patients = controller.currentInboundPatients();
       List<Staff> staff = manager.getAvailableStaff();
       List<Bed> beds = manager.getAvailableBeds();
 
@@ -71,11 +72,11 @@ public class DivergenceController {
       int yellowInboundPatients = 0;
       int greenInboundPatients = 0;
       int[] availableStaff = {0, 0};
-      int[] neededStaff = {0, 0};
 
       int criticalBedsAvailable = calculateCriticalBedsAvailable(beds);
 
       // determine the num of inbound patients for each priority
+      List<Patient> patients = patientsAffectingDivergence(controller.currentInboundPatients());
       for (Patient patient : patients) {
          if (Priority.RED.equals(patient.getPriority())) {
             redInboundPatients++;
@@ -103,10 +104,11 @@ public class DivergenceController {
       }
 
 
-      if (yellowInboundPatients + greenInboundPatients > (beds.size() - criticalBedsAvailable
-                                                          + yellowBedOverflowAllowed
-                                                          + greenBedOverflowAllowed)) {
-         if ((greenInboundPatients > (beds.size() - criticalBedsAvailable + greenBedOverflowAllowed))
+      if (yellowInboundPatients + greenInboundPatients >
+          (beds.size() - criticalBedsAvailable + yellowBedOverflowAllowed +
+           greenBedOverflowAllowed)) {
+         if ((greenInboundPatients > (beds.size() - criticalBedsAvailable
+                                      + greenBedOverflowAllowed))
              && (yellowInboundPatients <= (beds.size() - criticalBedsAvailable
                                            + yellowBedOverflowAllowed))) {
             greenCount++;
@@ -119,14 +121,9 @@ public class DivergenceController {
          }
       }
 
-      // determine the number of needed docs/ nurses on inbound patients and
-      // staff requirement for each priority
-      neededStaff[0] = redInboundPatients * staffReqForRedPatient[0];
-      neededStaff[0] += yellowInboundPatients * staffReqForYellowPatient[0];
-      neededStaff[0] += greenInboundPatients * staffReqForGreenPatient[0];
-      neededStaff[1] = redInboundPatients * staffReqForRedPatient[1];
-      neededStaff[1] += yellowInboundPatients * staffReqForYellowPatient[1];
-      neededStaff[1] += greenInboundPatients * staffReqForGreenPatient[1];
+      int[] neededStaff = calculateNeededStaff(staffReqForRedPatient, staffReqForYellowPatient,
+                                               staffReqForGreenPatient, redInboundPatients,
+                                               yellowInboundPatients, greenInboundPatients);
 
       // determine if diversion increment need to occur based of doctor num
       if (neededStaff[0] > availableStaff[0]) {
@@ -137,8 +134,10 @@ public class DivergenceController {
                greenCount++;
             }
          } else {
-            int both = (yellowInboundPatients * staffReqForYellowPatient[0]) + (greenInboundPatients
-                                                                                * staffReqForGreenPatient[0]);
+
+            int both =
+                    (yellowInboundPatients * staffReqForYellowPatient[0]) + (greenInboundPatients *
+                                                                             staffReqForGreenPatient[0]);
             if (both >= diff) {
                if (!greenIncremented) {
                   greenIncremented = true;
@@ -175,7 +174,8 @@ public class DivergenceController {
             }
          } else {
             int both = (yellowInboundPatients * staffReqForYellowPatient[1]) + (greenInboundPatients
-                                                                                * staffReqForGreenPatient[1]);
+                                                                                *
+                                                                                staffReqForGreenPatient[1]);
             if (both >= diff) {
                if (!greenIncremented) {
                   greenIncremented = true;
@@ -201,9 +201,22 @@ public class DivergenceController {
             }
          }
       }
-      EmergencyResponseService transportService = new EmergencyResponseService("http://localhost",
-                                                                               4567,
-                                                                               1000);
+
+      DivergenceReportBuilder reportBuilder =
+              new DivergenceReportBuilder(redInboundPatients,
+                                          yellowInboundPatients,
+                                          greenInboundPatients,
+                                          availableStaff,
+                                          neededStaff,
+                                          beds.size(),
+                                          criticalBedsAvailable);
+
+      String divergenceReport = reportBuilder.buildReport();
+
+
+      // go into divergence mode if divergence is necessary
+      EmergencyResponseService transportService =
+              new EmergencyResponseService("http://localhost", 4567, 1000);
       if (redIncremented) {
          if ((redCount > allowedCount) && !redDivergence) {
             redDivergence = true;
@@ -251,9 +264,39 @@ public class DivergenceController {
       }
    }
 
+   List<Patient> patientsAffectingDivergence(final List<Patient> patients) {
+      Stream<Patient> allPatients = patients.stream();
+
+      Stream<Patient> filteredPatients = allPatients.filter(patient -> {
+         return !(patient.getCondition().toLowerCase().contains("ambulatory")
+                  && patient.getCondition().toLowerCase().contains("non-emergency"))
+                || !(patient.getPriority().equals(Priority.GREEN));
+      });
+
+      return filteredPatients.collect(Collectors.toList());
+
+   }
+
+   private int[] calculateNeededStaff(final int[] staffReqForRedPatient,
+                                      final int[] staffReqForYellowPatient,
+                                      final int[] staffReqForGreenPatient,
+                                      final int redInboundPatients,
+                                      final int yellowInboundPatients,
+                                      final int greenInboundPatients) {
+      int[] neededStaff = {0, 0};
+      neededStaff[0] = redInboundPatients * staffReqForRedPatient[0];
+      neededStaff[0] += yellowInboundPatients * staffReqForYellowPatient[0];
+      neededStaff[0] += greenInboundPatients * staffReqForGreenPatient[0];
+      neededStaff[1] = redInboundPatients * staffReqForRedPatient[1];
+      neededStaff[1] += yellowInboundPatients * staffReqForYellowPatient[1];
+      neededStaff[1] += greenInboundPatients * staffReqForGreenPatient[1];
+      return neededStaff;
+   }
+
    /**
     * extracted method. This can be covered by using 'make static' refactoring.
     * Also we could later move this to a more appropriate class.
+    *
     * @param beds
     * @return
     */
