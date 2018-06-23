@@ -1,8 +1,6 @@
 package erserver.modules.dependencies;
 
-import erserver.modules.dependencies.vendorpagersystem.PagerTransport;
 import erserver.modules.testtypes.Patient;
-import erserver.modules.dependencies.vendorpagersystem.PagerSystem;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -13,11 +11,21 @@ public class AlertScanner {
 
    private InboundPatientSource inboundPatientSource;
    private ArrayList<Integer> criticalPatientNotificationsSent;
+   private AlertTransmitter alertTransmitter;
+
 
    public AlertScanner(InboundPatientSource inboundPatientSource) {
-      this.inboundPatientSource = inboundPatientSource;
-      criticalPatientNotificationsSent = new ArrayList<>();
+      this(inboundPatientSource, new PagerSystemAlertTransmitter());
    }
+
+   // testable constructor
+   public AlertScanner(InboundPatientSource inboundPatientSource,
+                       AlertTransmitter alertTransmitter) {
+      this.inboundPatientSource = inboundPatientSource;
+      this.alertTransmitter = alertTransmitter;
+      this.criticalPatientNotificationsSent = new ArrayList<>();
+   }
+
 
    public void scan() {
       System.out.println("Scanning for situations requiring alerting...");
@@ -27,8 +35,9 @@ public class AlertScanner {
             if (!criticalPatientNotificationsSent.contains(patient.getTransportId())) {
                alertForNewCriticalPatient(patient);
             }
-         } else if ((Priority.YELLOW.equals(patient.getPriority()))
-                    && "heart arrhythmia".equalsIgnoreCase(patient.getCondition())) {
+         }
+         else if ((Priority.YELLOW.equals(patient.getPriority()))
+                  && "heart arrhythmia".equalsIgnoreCase(patient.getCondition())) {
             if (!criticalPatientNotificationsSent.contains(patient.getTransportId())) {
                alertForNewCriticalPatient(patient);
             }
@@ -38,14 +47,20 @@ public class AlertScanner {
 
    protected void alertForNewCriticalPatient(Patient patient) {
       try {
-         PagerTransport transport = PagerSystem.getTransport();
-         transport.initialize();
-         transport.transmitRequiringAcknowledgement(ADMIN_ON_CALL_DEVICE,
-                                                    "New inbound critical patient: " +
-                                                    patient.getTransportId());
+         if (Priority.RED.equals(patient.getPriority())) {
+            alertTransmitter.transmitRequiringAcknowl(ADMIN_ON_CALL_DEVICE,
+                                                      "New inbound critical patient: " +
+                                                      patient.getTransportId());
+
+         }
+         else {
+            alertTransmitter.transmit(ADMIN_ON_CALL_DEVICE,
+                                      "New inbound critical patient: " + patient.getTransportId());
+         }
          criticalPatientNotificationsSent.add(patient.getTransportId());
       } catch (Throwable t) {
-         System.out.println("Failed attempt to use pager system to device " + ADMIN_ON_CALL_DEVICE);
+         System.out.println("Failed attempt to use pager system to device " + ADMIN_ON_CALL_DEVICE +
+                            " for patient " + patient.getName());
       }
    }
 

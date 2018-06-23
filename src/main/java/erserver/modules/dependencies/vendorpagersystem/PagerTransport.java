@@ -1,5 +1,8 @@
 package erserver.modules.dependencies.vendorpagersystem;
 
+/**
+ * will be used as 'some vendor's' hard to test API
+ */
 public final class PagerTransport {
 
     public void initialize() {

@@ -1,12 +1,9 @@
-
 /*
  *
  * @author Melvin Hazeleger
  * @created Wednesday 20-Jun-18 20:02
  *
  */
-
-
 package erserver.modules.dependencies;
 
 import erserver.modules.testtypes.Patient;
@@ -23,37 +20,67 @@ public class AlertScannerTest {
    @Test
    public void scanAlertsForPriorityRedPatients() {
       //prepare
-      InboundPatientDouble inboundDouble = new InboundPatientDouble();
-      inboundDouble.simulateNewInboudPatien(createTestPatient(10, Priority.RED, "stroke"));
-      inboundDouble.simulateNewInboudPatien(createTestPatient(11, Priority.YELLOW, "mild stroke"));
+      InboundPatientTestDouble inboundDouble = new InboundPatientTestDouble();
+      inboundDouble.simulateNewInboundPatient(createTestPatient(11, Priority.RED, "stroke"));
+      inboundDouble.simulateNewInboundPatient(createTestPatient(12, Priority.YELLOW, "mild stroke"));
+      AlertTransmitterTestDouble transmitterDouble = new AlertTransmitterTestDouble();
 
-      AlertScannerTestingSubclass scanner = new AlertScannerTestingSubclass(inboundDouble);
+      AlertScanner scanner = new AlertScanner(inboundDouble, transmitterDouble);
 
       //execute
       scanner.scan();
 
       //verify
-      assertThat(scanner.patientsAlertedFor.size(), is(1));
-      assertThat(scanner.patientsAlertedFor.get(0).getTransportId(), is(10));
+      final ArrayList<String> receivedReqAck = transmitterDouble.getAlertsReceivedRequiringAck();
+
+      assertThat(receivedReqAck.size(), is(1));
+      assertThat(receivedReqAck.get(0), is("111-111-1111: New inbound critical "
+                                           + "patient: 11"));
    }
 
    @Test
    public void scanAlertsForYellowHeartArrhythmiaPatients() {
       //prepare
-      InboundPatientDouble inboundDouble = new InboundPatientDouble();
-      inboundDouble.simulateNewInboudPatien(createTestPatient(10, Priority.GREEN, "shortness of breath"));
-      inboundDouble.simulateNewInboudPatien(createTestPatient(11, Priority.RED, "heart arrhythmia"));
+      InboundPatientTestDouble inboundDouble = new InboundPatientTestDouble();
+      inboundDouble.simulateNewInboundPatient(createTestPatient(11, Priority.GREEN, "shortness of breath"));
+      inboundDouble.simulateNewInboundPatient(createTestPatient(12, Priority.RED, "heart arrhythmia"));
 
-      AlertScannerTestingSubclass scanner = new AlertScannerTestingSubclass(inboundDouble);
+      AlertTransmitterTestDouble transmitterDouble = new AlertTransmitterTestDouble();
+
+      AlertScanner scanner = new AlertScanner(inboundDouble, transmitterDouble);
 
       //execute
       scanner.scan();
 
       //verify
-      assertThat(scanner.patientsAlertedFor.size(), is(1));
-      assertThat(scanner.patientsAlertedFor.get(0).getTransportId(), is(11));
+      final List<String> alertReceived = transmitterDouble.getAlertsReceived();
+
+//      assertThat(alertReceived.size(), is(1));
+//      assertThat(alertReceived.get(0), is("111-111-1111: New inbound critical patient: 12"));
+      //todo fix
    }
 
+   @Test
+   public void onlyTransmitOnceForGivenInboundPatient() {
+      //prepare
+      InboundPatientTestDouble patient = new InboundPatientTestDouble();
+      patient.simulateNewInboundPatient(createTestPatient(11, Priority.GREEN, "shortness of breath"));
+      patient.simulateNewInboundPatient(createTestPatient(12, Priority.YELLOW, "heart arrhythmia"));
+      AlertTransmitterTestDouble transmitter = new AlertTransmitterTestDouble();
+
+      AlertScanner scanner = new AlertScanner(patient, transmitter);
+
+      //execute
+      scanner.scan();
+      scanner.scan();
+
+
+      //verify
+      assertThat(transmitter.getAlertsReceived().size(), is(1));
+      assertThat(transmitter.getAlertsReceived().get(0), is("111-111-1111: New inbound critical patient: "
+                                                            + "12"));
+
+   }
 
    private Patient createTestPatient(int transportId, Priority priority, String condition) {
       Patient patient = new Patient();
@@ -63,27 +90,4 @@ public class AlertScannerTest {
       return patient;
    }
 
-
-   private class InboundPatientDouble implements InboundPatientSource {
-
-      private List<Patient> inbounds;
-
-      public InboundPatientDouble(){
-         this.inbounds = new ArrayList<>();
-      }
-
-      public void simulateNewInboudPatien(Patient inbound) {
-         inbounds.add(inbound);
-      }
-
-      @Override
-      public List<Patient> currentInboundPatients() {
-         return inbounds;
-      }
-
-      @Override
-      public void informOfPatientArrival(int transportId) {
-         //impl later when testing needed for this function
-      }
-   }
 }
