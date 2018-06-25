@@ -26,10 +26,11 @@ public class DivergenceController {
    private int redCount;
    private int yellowCount;
    private int greenCount;
-   private int allowedCount;
-   private int redBedOverflowAllowed;
-   private int yellowBedOverflowAllowed;
-   private int greenBedOverflowAllowed;
+   private final int allowedCount;
+
+   private final int redBedOverflowAllowed = 0;
+   private final int yellowBedOverflowAllowed = 1;
+   private final int greenBedOverflowAllowed = 4;
 
 
    public DivergenceController() {
@@ -40,9 +41,6 @@ public class DivergenceController {
       this.yellowCount = 0;
       this.greenCount = 0;
       this.allowedCount = 3;
-      this.redBedOverflowAllowed = 0;
-      this.yellowBedOverflowAllowed = 1;
-      this.greenBedOverflowAllowed = 4;
    }
 
    /**
@@ -121,9 +119,10 @@ public class DivergenceController {
          }
       }
 
-      int[] neededStaff = calculateNeededStaff(staffReqForRedPatient, staffReqForYellowPatient,
+      int[] neededStaff = new NeededStaffCalculator(staffReqForRedPatient,
+                                                     staffReqForYellowPatient,
                                                staffReqForGreenPatient, redInboundPatients,
-                                               yellowInboundPatients, greenInboundPatients);
+                                               yellowInboundPatients, greenInboundPatients).overall();
 
       // determine if diversion increment need to occur based of doctor num
       if (neededStaff[0] > availableStaff[0]) {
@@ -221,7 +220,7 @@ public class DivergenceController {
          if ((redCount > allowedCount) && !redDivergence) {
             redDivergence = true;
             transportService.requestInboundDiversion(Priority.RED);
-            sendDivergencePage("Entered divergence for RED priority patients!", true);
+            sendDivergencePage("Entered divergence for RED priority patients!",  true);
             redCount = 0;
          }
       } else {
@@ -277,21 +276,7 @@ public class DivergenceController {
 
    }
 
-   private int[] calculateNeededStaff(final int[] staffReqForRedPatient,
-                                      final int[] staffReqForYellowPatient,
-                                      final int[] staffReqForGreenPatient,
-                                      final int redInboundPatients,
-                                      final int yellowInboundPatients,
-                                      final int greenInboundPatients) {
-      int[] neededStaff = {0, 0};
-      neededStaff[0] = redInboundPatients * staffReqForRedPatient[0];
-      neededStaff[0] += yellowInboundPatients * staffReqForYellowPatient[0];
-      neededStaff[0] += greenInboundPatients * staffReqForGreenPatient[0];
-      neededStaff[1] = redInboundPatients * staffReqForRedPatient[1];
-      neededStaff[1] += yellowInboundPatients * staffReqForYellowPatient[1];
-      neededStaff[1] += greenInboundPatients * staffReqForGreenPatient[1];
-      return neededStaff;
-   }
+
 
    /**
     * extracted method. This can be covered by using 'make static' refactoring.

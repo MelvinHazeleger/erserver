@@ -13,13 +13,13 @@ package erserver.modules.hardunderstand;
 public class DivergenceReportBuilder {
 
 
-   private int redInboundPatients;
-   private int yellowInboundPatients;
-   private int greenInboundPatients;
-   private int[] availableStaff;
-   private int[] neededStaff;
-   private int bedsAvailable;
-   private int criticalBedsAvailable;
+   private final int redInboundPatients;
+   private final int yellowInboundPatients;
+   private final int greenInboundPatients;
+   private final int[] availableStaff;
+   private final int[] neededStaff;
+   private final int bedsAvailable;
+   private final int criticalBedsAvailable;
 
    public DivergenceReportBuilder(int redInboundPatients,
                                   int yellowInboundPatients,
